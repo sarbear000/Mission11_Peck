@@ -1,0 +1,6 @@
+@Mission11_Peck.API_HostAddress = http://localhost:5152
+
+GET {{Mission11_Peck.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
