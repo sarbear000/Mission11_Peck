@@ -3,6 +3,8 @@ import type {Book} from "../types/Book";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import type { CartItem } from "../types/CartItem";
+import { fetchBooks } from "../api/BooksAPI";
+import Pagination from "./Pagination";
 
 
 function BookList({selectedCategories}: {selectedCategories: string[]}) {
@@ -11,10 +13,11 @@ function BookList({selectedCategories}: {selectedCategories: string[]}) {
     const [books, setBooks] = useState<Book[]>([]);
     const [pageSize, setPageSize] = useState<number>(5);
     const [pageNum, setPageNum] = useState<number>(1);
-    const[totalItems, setTotalItems] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(0);
     const [sortBy, setSortBy] = useState<string>("");
     const navigate = useNavigate();
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
     const handleAddToCart = (b: Book) => {
         addToCart({
           bookId: b.bookID,
@@ -22,7 +25,7 @@ function BookList({selectedCategories}: {selectedCategories: string[]}) {
           price: b.price,
           quantity: 1
         });
-      
+
         // show toast
         setShowToast(true);
       
@@ -32,20 +35,27 @@ function BookList({selectedCategories}: {selectedCategories: string[]}) {
       const [showToast, setShowToast] = useState(false);
 
     useEffect(() => {
-        const fetchBooks = async () => {
+        const loadBooks = async () => {
 
-            const categoryParams = selectedCategories.map((cat) => `bookCategories=${encodeURIComponent(cat)}`).join('&');
-
-            const response = await fetch(`https://localhost:5000/api/book/AllBooks?pageLength=${pageSize}&pageNum=${pageNum}&sortBy=${sortBy}${selectedCategories.length ? `&${categoryParams}` : ''}`);
-            const data = await response.json();
-            console.log(data);
-            setBooks(data.books);
-            setTotalItems(data.totalNumBooks);
-            setTotalPages(Math.ceil(totalItems / pageSize));
+            try{
+                setLoading(true);
+                const data = await fetchBooks(pageSize, pageNum, sortBy, selectedCategories);
+                console.log(data);
+                setBooks(data.books);
+                setTotalPages(Math.ceil(data.totalNumBooks / pageSize));
+            } catch (error) {
+                setError((error as Error).message);
+            } finally {
+                setLoading(false);
+            }
+        
         };
 
-        fetchBooks();
-    }, [pageSize, pageNum, totalItems, sortBy, selectedCategories]);
+        loadBooks();
+    }, [pageSize, pageNum, sortBy, selectedCategories]);
+
+    if (loading) return <p>Loading books...</p>;
+    if (error) return <p className = "text-red-500">Error: {error}</p>;
 
     return (
         <>
@@ -59,7 +69,18 @@ function BookList({selectedCategories}: {selectedCategories: string[]}) {
             ✅ Book added to cart!
             </div>
         </div>
-        )}
+     
+          )}
+          <br></br>
+           <div>
+                <button 
+                    className="btn btn-primary" 
+                    onClick={() => navigate('/adminbooks')}
+                    >
+                    Admin Books
+                </button>
+            </div>
+            <br></br>
             <label>
                 Sort by:
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -96,37 +117,34 @@ function BookList({selectedCategories}: {selectedCategories: string[]}) {
                         Go to Cart
                     </button>
                     </div>
+
+
                 </div>
 
-               
         
+                    
         )}
-
-        <button disabled = {pageNum === 1} onClick={() => setPageNum(pageNum - 1)}>Previous</button>
-        {
-            [...Array(totalPages)].map((_, index) => (
-                <button key = {index + 1} onClick = {() => setPageNum(index + 1)} disabled = {pageNum === (index + 1)}>{index + 1}</button>
-            ))
-        }
-        <button disabled = {pageNum === totalPages} onClick = {() => setPageNum(pageNum + 1)}>Next</button>
-
-        <br></br>
-        <label>
-            Results Per Page: 
-            <select value = {pageSize} onChange = {
-                (b) => {
-                    setPageSize(Number(b.target.value));
+        <Pagination 
+                currentPage = {pageNum}
+                totalPages = {totalPages}
+                pageSize = {pageSize}
+                onPageChange = {setPageNum}
+                onPageSizeChange = {(newSize) => {
+                    setPageSize(newSize);
                     setPageNum(1);
-                }
+                }}
+        ></Pagination>
 
-                 }>
-                <option value = "5">5</option>
-                <option value = "10">10</option>
-                <option value = "20">20</option>
-            </select>
-        </label>
         </>
     );
 }
 
 export default BookList
+
+function setLoading(arg0: boolean) {
+    throw new Error("Function not implemented.");
+}
+function setError(message: string) {
+    throw new Error("Function not implemented.");
+}
+
